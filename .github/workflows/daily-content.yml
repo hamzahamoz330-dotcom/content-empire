@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: 📥 Download Code
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       
     - name: 🐍 Setup Python
       uses: actions/setup-python@v4
@@ -34,7 +34,7 @@ jobs:
       run: python main.py
       
     - name: 📤 Upload Results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: daily-content
         path: output/
