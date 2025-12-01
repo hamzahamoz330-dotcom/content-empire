@@ -13,11 +13,11 @@ import re
 
 class Config:
     def __init__(self):
-        # كل الـ Secrets مدمجة مباشرة هنا
-        self.GEMINI_API_KEY = "AIzaSyDaolaDyIbbQjXKCGFCfp8z-Y4sxpBJL_Y"
-        self.TELEGRAM_BOT_TOKEN = "7914082976:AAH4rkusZEFxQWIPX4Xd3XT07dZppNzL6T0"
-        self.TELEGRAM_CHAT_ID = "6384015388"
-        self.PEXELS_API_KEY = "rphPYbjFLiYjIOu8Zzavee3ReH8SWbXgamD5rtd1bcWZLKHcWUYThKzJ"
+        # 🚨 استخدام Environment Variables بدلاً من الأسرار المدمجة
+        self.GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+        self.TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+        self.TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
+        self.PEXELS_API_KEY = os.getenv('PEXELS_API_KEY')
         
         # إعدادات المحتوى
         self.YOUTUBE_CHANNEL_URL = "https://youtube.com/@techcompass-d5l"
@@ -34,12 +34,16 @@ class Config:
         
     async def send_telegram_message(self, message):
         try:
+            if not self.TELEGRAM_BOT_TOKEN or not self.TELEGRAM_CHAT_ID:
+                logging.error("❌ Telegram credentials missing")
+                return False
+                
             url = f"https://api.telegram.org/bot{self.TELEGRAM_BOT_TOKEN}/sendMessage"
             data = {"chat_id": self.TELEGRAM_CHAT_ID, "text": message, "parse_mode": "HTML"}
-            requests.post(url, data=data, timeout=10)
-            return True
+            response = requests.post(url, data=data, timeout=10)
+            return response.status_code == 200
         except Exception as e:
-            print(f"Telegram error: {e}")
+            logging.error(f"Telegram error: {e}")
             return False
 
 class ContentEmpire:
@@ -63,6 +67,28 @@ class ContentEmpire:
         os.makedirs('output', exist_ok=True)
         os.makedirs('temp', exist_ok=True)
         os.makedirs('assets', exist_ok=True)
+    
+    async def check_environment(self):
+        """التحقق من أن جميع Environment Variables موجودة"""
+        required_vars = [
+            'GEMINI_API_KEY',
+            'TELEGRAM_BOT_TOKEN', 
+            'TELEGRAM_CHAT_ID',
+            'PEXELS_API_KEY'
+        ]
+        
+        missing_vars = []
+        for var in required_vars:
+            if not os.getenv(var):
+                missing_vars.append(var)
+        
+        if missing_vars:
+            self.logger.error(f"❌ Missing environment variables: {missing_vars}")
+            await self.config.send_telegram_message(f"❌ Missing environment variables: {missing_vars}")
+            return False
+        
+        self.logger.info("✅ All environment variables are set")
+        return True
     
     def load_used_topics(self):
         try:
@@ -178,6 +204,10 @@ class ContentEmpire:
     async def generate_trending_topics(self):
         """توليد مواضيع ترند حديثة وتعليمية"""
         try:
+            if not self.config.GEMINI_API_KEY:
+                self.logger.error("❌ Gemini API key not set")
+                return []
+                
             genai.configure(api_key=self.config.GEMINI_API_KEY)
             model = genai.GenerativeModel('gemini-pro')
             
@@ -246,6 +276,9 @@ class ContentEmpire:
     async def generate_additional_topics(self):
         """توليد مواضيع إضافية إذا نفذت الأساسية"""
         try:
+            if not self.config.GEMINI_API_KEY:
+                return []
+                
             genai.configure(api_key=self.config.GEMINI_API_KEY)
             model = genai.GenerativeModel('gemini-pro')
             
@@ -279,6 +312,10 @@ class ContentEmpire:
     
     async def generate_english_content(self, topic, content_type="long_video"):
         try:
+            if not self.config.GEMINI_API_KEY:
+                self.logger.error("❌ Gemini API key not set")
+                return f"Educational content about {topic} - technology tutorial and overview."
+                
             genai.configure(api_key=self.config.GEMINI_API_KEY)
             model = genai.GenerativeModel('gemini-pro')
             
@@ -671,6 +708,11 @@ technology, tech education, programming tutorial, AI, software development, {tit
     
     async def run_daily_workflow(self):
         try:
+            # التحقق من Environment Variables أولاً
+            if not await self.check_environment():
+                self.logger.error("❌ Missing environment variables - stopping workflow")
+                return
+                
             current_time = datetime.utcnow().strftime('%H:%M')
             self.logger.info(f"🕒 Current UTC time: {current_time}")
             
