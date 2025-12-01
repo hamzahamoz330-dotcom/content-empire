@@ -607,17 +607,33 @@ technology, tech education, programming tutorial, AI, software development, {tit
             
             recent_videos, recent_articles = self.get_recent_content_links()
             
-            enhanced_content = f"""
-{content}
-
+            # الإصلاح: استخدام concatenation عادي بدلاً من f-string مع backslash
+            enhanced_content = content
+            
+            # إضافة قسم الفيديوهات
+            enhanced_content += """
 <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;">
 <h2>🎥 Watch Related Videos</h2>
-{recent_videos.replace('•', '<li>').replace('\n', '<br>') if recent_videos else '<p>Check our YouTube channel for more educational content!</p>'}
+"""
+            
+            if recent_videos:
+                enhanced_content += recent_videos.replace('•', '<li>').replace('\n', '<br>')
+            else:
+                enhanced_content += '<p>Check our YouTube channel for more educational content!</p>'
+            
+            enhanced_content += """
 </div>
 
 <div style="background: #e8f4fd; padding: 20px; border-radius: 10px; margin: 20px 0;">
 <h2>📚 Read More Articles</h2>
-{recent_articles.replace('•', '<li>').replace('\n', '<br>') if recent_articles else '<p>Explore our blog for more tech insights!</p>'}
+"""
+            
+            if recent_articles:
+                enhanced_content += recent_articles.replace('•', '<li>').replace('\n', '<br>')
+            else:
+                enhanced_content += '<p>Explore our blog for more tech insights!</p>'
+            
+            enhanced_content += f"""
 </div>
 
 <p style="text-align: center; font-weight: bold;">
