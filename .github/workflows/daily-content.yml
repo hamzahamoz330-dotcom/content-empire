@@ -1,0 +1,35 @@
+name: 🎬 Daily Content Empire
+
+on:
+  schedule:
+    - cron: '0 12 * * *'
+    - cron: '0 14 * * *'  
+    - cron: '0 16 * * *'
+  workflow_dispatch:
+
+jobs:
+  generate-content:
+    runs-on: ubuntu-latest
+    steps:
+    - name: 📥 Download Code
+      uses: actions/checkout@v3
+      
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+        
+    - name: 📦 Install Packages
+      run: |
+        pip install -r requirements.txt
+        sudo apt-get update
+        sudo apt-get install -y ffmpeg
+        
+    - name: 🎬 Run System
+      run: python main.py
+      
+    - name: 📤 Upload Results
+      uses: actions/upload-artifact@v3
+      with:
+        name: daily-content
+        path: output/
