@@ -26,6 +26,11 @@ jobs:
         sudo apt-get install -y ffmpeg
         
     - name: 🎬 Run System
+      env:
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
       run: python main.py
       
     - name: 📤 Upload Results
