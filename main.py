@@ -596,6 +596,7 @@ class ContentEmpire:
             
             recent_videos, recent_articles = self.get_recent_content_links()
             
+            # إصلاح: استخدام triple quotes لتجنب مشاكل backslash
             full_description = f"""{description}
 
 🌟 **About This Video:**
@@ -650,11 +651,33 @@ technology, education, tutorial, programming, tech, {title.split()[0].lower()}
         try:
             recent_videos, recent_articles = self.get_recent_content_links()
             
+            # إصلاح: استخدام string formatting بدلاً من backslashes في f-string
+            video_list_html = ""
+            article_list_html = ""
+            
+            if recent_videos:
+                # معالجة الفيديوهات إلى HTML
+                video_items = []
+                video_lines = recent_videos.strip().split('\n')
+                for line in video_lines:
+                    if line.startswith('• '):
+                        video_items.append(f"<li>{line[2:]}</li>")
+                video_list_html = "<ul>" + "".join(video_items) + "</ul>"
+            
+            if recent_articles:
+                # معالجة المقالات إلى HTML
+                article_items = []
+                article_lines = recent_articles.strip().split('\n')
+                for line in article_lines:
+                    if line.startswith('• '):
+                        article_items.append(f"<li>{line[2:]}</li>")
+                article_list_html = "<ul>" + "".join(article_items) + "</ul>"
+            
             html_content = f"""
 <h1>{title}</h1>
 
 <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;">
-{content.replace('\n', '<br>')}
+{content.replace(chr(10), '<br>')}
 </div>
 
 """
@@ -670,23 +693,19 @@ technology, education, tutorial, programming, tech, {title.split()[0].lower()}
 </div>
 """
             
-            if recent_videos:
-                html_content += """
+            if video_list_html:
+                html_content += f"""
 <div style="background: #e8f5e9; padding: 20px; border-radius: 10px; margin: 20px 0;">
 <h2>📺 More Videos to Watch</h2>
-<ul>
-""" + recent_videos.replace('🎬 **Recent Videos:**\n', '').replace('• ', '<li>').replace('\n', '</li>') + """
-</ul>
+{video_list_html}
 </div>
 """
             
-            if recent_articles:
-                html_content += """
+            if article_list_html:
+                html_content += f"""
 <div style="background: #fff3e0; padding: 20px; border-radius: 10px; margin: 20px 0;">
 <h2>📚 Related Articles</h2>
-<ul>
-""" + recent_articles.replace('📝 **Recent Articles:**\n', '').replace('• ', '<li>').replace('\n', '</li>') + """
-</ul>
+{article_list_html}
 </div>
 """
             
@@ -815,19 +834,13 @@ technology, education, tutorial, programming, tech, {title.split()[0].lower()}
             current_time = datetime.utcnow().strftime('%H:%M')
             self.logger.info(f"🕒 Current UTC time: {current_time}")
             
-            if current_time == "12:00":
-                await self.run_12_00_workflow()
-            elif current_time == "14:00": 
-                await self.run_14_00_workflow()
-            elif current_time == "16:00":
-                await self.run_16_00_workflow()
-            else:
-                self.logger.info("🔄 Running all workflows for testing")
-                await self.run_12_00_workflow()
-                await asyncio.sleep(2)
-                await self.run_14_00_workflow()
-                await asyncio.sleep(2)
-                await self.run_16_00_workflow()
+            # للاختبار: تشغيل كل workflows
+            self.logger.info("🔄 Running all workflows for testing")
+            await self.run_12_00_workflow()
+            await asyncio.sleep(2)
+            await self.run_14_00_workflow()
+            await asyncio.sleep(2)
+            await self.run_16_00_workflow()
             
             await self.config.send_telegram_message(f"""
 🎉 <b>Daily Content Empire Complete!</b>
