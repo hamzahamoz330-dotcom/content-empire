@@ -1,4 +1,4 @@
-name: 🎬 Daily Content Empire (REAL UPLOAD)
+name: 🎬 Daily Content Empire
 
 on:
   schedule:
@@ -10,7 +10,7 @@ on:
 jobs:
   generate-content:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 30
     
     env:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -33,12 +33,16 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y ffmpeg
+        sudo apt-get install -y imagemagick
+        sudo apt-get install -y fonts-dejavu
+        sudo apt-get install -y libmagickwand-dev
         
     - name: 📦 Install Python Packages
       run: |
+        pip install --upgrade pip
         pip install -r requirements.txt
         
-    - name: 🎬 Run REAL Content System
+    - name: 🎬 Run Content System
       run: python main.py
       
     - name: 📤 Upload Results
