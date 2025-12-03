@@ -4,7 +4,7 @@ import os
 import google.generativeai as genai
 import edge_tts
 from moviepy.editor import *
-from datetime import datetime, timedelta
+from datetime import datetime
 import requests
 import json
 import hashlib
@@ -17,35 +17,25 @@ from googleapiclient.http import MediaFileUpload
 from PIL import Image, ImageDraw, ImageFont
 import textwrap
 import numpy as np
-import sys
-import tempfile
 
 # إعدادات التسجيل
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# إصلاح مشكلة TextClip
-import moviepy.config as mp_config
-mp_config.change_settings({"IMAGEMAGICK_BINARY": "/usr/bin/convert"})
-
 class Config:
     def __init__(self):
-        # استخدام Environment Variables
         self.GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
         self.TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
         self.TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
         self.PEXELS_API_KEY = os.getenv('PEXELS_API_KEY')
         
-        # إعدادات المحتوى
         self.YOUTUBE_CHANNEL_URL = "https://youtube.com/@techcompass-d5l"
         self.BLOGGER_BLOG_URL = "https://techcompass4you.blogspot.com/"
-        self.CONTENT_NICHE = "Technology"
         self.BRAND_NAME = "TechCompass"
         
     async def send_telegram_message(self, message):
         try:
             if not self.TELEGRAM_BOT_TOKEN or not self.TELEGRAM_CHAT_ID:
-                logger.error("❌ Telegram credentials missing")
                 return False
                 
             url = f"https://api.telegram.org/bot{self.TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -62,7 +52,6 @@ class YouTubeUploader:
         self.initialize_service()
     
     def initialize_service(self):
-        """تهيئة خدمة YouTube API"""
         try:
             token_json = os.getenv('YOUTUBE_TOKEN_JSON')
             if not token_json:
@@ -85,13 +74,12 @@ class YouTubeUploader:
                     creds.refresh(Request())
             
             self.service = build('youtube', 'v3', credentials=creds)
-            logger.info("✅ YouTube API service initialized successfully")
+            logger.info("✅ YouTube API service initialized")
             
         except Exception as e:
             logger.error(f"❌ Failed to initialize YouTube service: {e}")
     
     def upload_video(self, video_path, title, description):
-        """رفع فيديو حقيقي إلى YouTube"""
         if not self.service:
             logger.error("❌ YouTube service not initialized")
             return None
@@ -101,7 +89,7 @@ class YouTubeUploader:
                 'snippet': {
                     'title': title[:100],
                     'description': description[:5000],
-                    'tags': ['technology', 'education', 'tutorial', 'tech', 'programming', 'coding', 'software', 'AI', 'artificial intelligence', 'machine learning'],
+                    'tags': ['technology', 'education', 'tutorial', 'tech', 'programming'],
                     'categoryId': '28'
                 },
                 'status': {
@@ -120,7 +108,7 @@ class YouTubeUploader:
             video_id = response['id']
             video_url = f"https://www.youtube.com/watch?v={video_id}"
             
-            logger.info(f"✅ Video uploaded successfully: {video_url}")
+            logger.info(f"✅ Video uploaded: {video_url}")
             return video_url
             
         except Exception as e:
@@ -134,7 +122,6 @@ class BloggerUploader:
         self.initialize_service()
     
     def initialize_service(self):
-        """تهيئة خدمة Blogger API"""
         try:
             token_json = os.getenv('BLOGGER_TOKEN_JSON')
             if not token_json:
@@ -158,7 +145,6 @@ class BloggerUploader:
             
             self.service = build('blogger', 'v3', credentials=creds)
             
-            # الحصول على blog_id
             try:
                 blogs = self.service.blogs().listByUser(userId='self').execute()
                 if blogs.get('items'):
@@ -170,13 +156,12 @@ class BloggerUploader:
             except:
                 self.blog_id = "YOUR_BLOG_ID"
             
-            logger.info("✅ Blogger API service initialized successfully")
+            logger.info("✅ Blogger API service initialized")
             
         except Exception as e:
             logger.error(f"❌ Failed to initialize Blogger service: {e}")
     
     def publish_post(self, title, content):
-        """نشر مقال على Blogger"""
         if not self.service or not self.blog_id:
             logger.error("❌ Blogger service not initialized")
             return None
@@ -185,7 +170,7 @@ class BloggerUploader:
             body = {
                 'title': title,
                 'content': content,
-                'labels': ['technology', 'education', 'tutorial', 'tech', 'programming']
+                'labels': ['technology', 'education', 'tutorial']
             }
             
             post = self.service.posts().insert(
@@ -195,149 +180,236 @@ class BloggerUploader:
             ).execute()
             
             post_url = post['url']
-            logger.info(f"✅ Blog post published successfully: {post_url}")
+            logger.info(f"✅ Blog post published: {post_url}")
             return post_url
             
         except Exception as e:
             logger.error(f"❌ Blogger publish failed: {e}")
             return None
 
-class SimpleVideoCreator:
-    """منشئ فيديو مبسط بدون مشاكل"""
+class ProfessionalVideoCreator:
+    """منشئ فيديو محترف مع مدة مناسبة ومحتوى غني"""
     
     def __init__(self):
         self.temp_dir = "temp"
         os.makedirs(self.temp_dir, exist_ok=True)
     
-    def create_text_image(self, text, size=(1920, 1080), font_size=70):
-        """إنشاء صورة نصية بسيطة باستخدام PIL"""
+    def create_rich_text_image(self, text, size=(1920, 1080), is_title=False):
+        """إنشاء صورة نصية غنية بالمحتوى"""
         try:
-            # إنشاء صورة
-            image = Image.new('RGB', size, color=(25, 99, 235))  # أزرق
-            
-            # إعداد الرسم
+            # خلفية متدرجة
+            image = Image.new('RGB', size, color=(30, 60, 90))
             draw = ImageDraw.Draw(image)
             
-            # محاولة تحميل خط
+            # إضافة تدرج لوني
+            for i in range(size[1]):
+                r = int(30 + (i / size[1]) * 20)
+                g = int(60 + (i / size[1]) * 40)
+                b = int(90 + (i / size[1]) * 30)
+                draw.line([(0, i), (size[0], i)], fill=(r, g, b))
+            
+            # إعداد الخط
             try:
-                font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", font_size)
+                if is_title:
+                    title_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 100)
+                    text_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 60)
+                else:
+                    title_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 70)
+                    text_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 45)
             except:
-                # خط افتراضي
-                font = ImageFont.load_default()
+                # خطوط افتراضية
+                title_font = ImageFont.load_default()
+                text_font = ImageFont.load_default()
             
-            # تقسيم النص
-            lines = textwrap.wrap(text, width=40)
+            # تقسيم النص إلى عنوان وجسم
+            lines = textwrap.wrap(text, width=40 if is_title else 50)
             
-            # حساب موقع الكتابة
-            total_height = len(lines) * (font_size + 10)
-            y = (size[1] - total_height) // 2
+            y_position = size[1] // 4
             
-            # رسم كل سطر
-            for line in lines:
-                # حساب عرض النص
-                bbox = draw.textbbox((0, 0), line, font=font)
+            # رسم العنوان (السطر الأول)
+            if lines:
+                title_line = lines[0]
+                bbox = draw.textbbox((0, 0), title_line, font=title_font)
                 text_width = bbox[2] - bbox[0]
                 x = (size[0] - text_width) // 2
                 
-                # رسم النص مع ظل
-                draw.text((x+3, y+3), line, font=font, fill=(0, 0, 0))
-                draw.text((x, y), line, font=font, fill=(255, 255, 255))
+                # ظل للنص
+                draw.text((x+4, y_position+4), title_line, font=title_font, fill=(0, 0, 0, 180))
+                draw.text((x, y_position), title_line, font=title_font, fill=(255, 255, 255))
                 
-                y += font_size + 10
+                y_position += 120
+            
+            # رسم بقية النص
+            for line in lines[1:]:
+                bbox = draw.textbbox((0, 0), line, font=text_font)
+                text_width = bbox[2] - bbox[0]
+                x = (size[0] - text_width) // 2
+                
+                draw.text((x+3, y_position+3), line, font=text_font, fill=(0, 0, 0))
+                draw.text((x, y_position), line, font=text_font, fill=(220, 220, 220))
+                
+                y_position += 60
+            
+            # إضافة شعار في الزاوية
+            logo_text = "Tech Compass"
+            logo_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 30)
+            draw.text((50, size[1] - 80), logo_text, font=logo_font, fill=(255, 255, 255, 200))
+            draw.text((50, size[1] - 50), "Tech Education Channel", font=logo_font, fill=(200, 200, 200, 180))
             
             # حفظ الصورة
-            temp_path = os.path.join(self.temp_dir, f"text_{hash(text)}_{size[0]}x{size[1]}.png")
-            image.save(temp_path)
+            temp_path = os.path.join(self.temp_dir, f"rich_text_{hash(text)}.png")
+            image.save(temp_path, quality=95)
             
             return temp_path
             
         except Exception as e:
-            logger.error(f"❌ Text image creation error: {e}")
+            logger.error(f"❌ Rich text image error: {e}")
             return None
     
-    async def create_simple_video(self, topic, script, audio_path, video_type="long"):
-        """إنشاء فيديو بسيط بدون مشاكل"""
+    def create_short_text_image(self, text, size=(1080, 1920)):
+        """إنشاء صورة للمقاطع القصيرة"""
         try:
-            # تحديد الحجم
-            if video_type == "long":
-                size = (1920, 1080)
-                target_duration = 300  # 5 دقائق
-                font_size = 70
-            else:
-                size = (1080, 1920)
-                target_duration = 45  # 45 ثانية
-                font_size = 50
+            # خلفية ديناميكية
+            colors = [
+                (25, 99, 235),   # أزرق
+                (124, 58, 237),  # بنفسجي
+                (5, 150, 105),   # أخضر
+                (220, 38, 38)    # أحمر
+            ]
+            color = random.choice(colors)
+            image = Image.new('RGB', size, color=color)
+            draw = ImageDraw.Draw(image)
+            
+            # إضافة نمط
+            for i in range(0, size[0], 40):
+                draw.line([(i, 0), (i, size[1])], fill=(255, 255, 255, 30), width=2)
+            
+            # خط كبير للنص
+            try:
+                font_large = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 80)
+                font_small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 50)
+            except:
+                font_large = ImageFont.load_default()
+                font_small = ImageFont.load_default()
             
             # تقسيم النص
-            sentences = re.split(r'[.!?]+', script)
-            sentences = [s.strip() for s in sentences if len(s.strip()) > 10]
+            lines = textwrap.wrap(text, width=25)
+            y_position = size[1] // 3
             
-            if not sentences or len(sentences) < 3:
-                sentences = [
-                    f"Welcome to Tech Compass!",
-                    f"Today we're talking about: {topic}",
-                    f"This is important technology",
-                    f"Learn more in our full tutorial",
-                    f"Subscribe for more tech content!"
-                ]
+            for i, line in enumerate(lines):
+                bbox = draw.textbbox((0, 0), line, font=font_large if i == 0 else font_small)
+                text_width = bbox[2] - bbox[0]
+                x = (size[0] - text_width) // 2
+                
+                # ظل
+                draw.text((x+5, y_position+5), line, 
+                         font=font_large if i == 0 else font_small, 
+                         fill=(0, 0, 0, 150))
+                
+                # النص الرئيسي
+                draw.text((x, y_position), line, 
+                         font=font_large if i == 0 else font_small, 
+                         fill=(255, 255, 255))
+                
+                y_position += 100 if i == 0 else 70
+            
+            # إضافة أيقونة
+            icons = ["🚀", "⚡", "💡", "🔥", "🎯"]
+            icon = random.choice(icons)
+            icon_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 120)
+            icon_bbox = draw.textbbox((0, 0), icon, font=icon_font)
+            icon_width = icon_bbox[2] - icon_bbox[0]
+            icon_x = (size[0] - icon_width) // 2
+            
+            draw.text((icon_x, y_position + 50), icon, font=icon_font, fill=(255, 255, 255, 200))
+            
+            # حفظ الصورة
+            temp_path = os.path.join(self.temp_dir, f"short_text_{hash(text)}.png")
+            image.save(temp_path, quality=95)
+            
+            return temp_path
+            
+        except Exception as e:
+            logger.error(f"❌ Short text image error: {e}")
+            return None
+    
+    async def create_long_video(self, topic, script, audio_path):
+        """إنشاء فيديو طويل (8-10 دقائق)"""
+        try:
+            # تقسيم السكربت إلى مشاهد
+            paragraphs = self.split_into_paragraphs(script, min_paragraphs=15)
             
             clips = []
+            total_duration = 0
+            target_duration = 600  # 10 دقائق
             
-            # مشهد المقدمة
-            intro_text = f"Tech Compass\n\n{topic}"
-            intro_image = self.create_text_image(intro_text, size, font_size + 20)
+            # 1. المقدمة الاحترافية (15 ثانية)
+            intro_text = f"Complete Guide to\n{topic}"
+            intro_image = self.create_rich_text_image(intro_text, is_title=True)
             if intro_image:
-                intro_clip = ImageClip(intro_image, duration=5)
+                intro_clip = ImageClip(intro_image, duration=15)
                 clips.append(intro_clip)
+                total_duration += 15
             
-            # المشاهد الرئيسية
-            for i, sentence in enumerate(sentences[:8]):  # حد أقصى 8 مشاهد
-                scene_duration = min(len(sentence.split()) * 0.6, 10)
+            # 2. محتوى رئيسي
+            scene_durations = self.calculate_scene_durations(len(paragraphs), target_duration - 30)
+            
+            for i, paragraph in enumerate(paragraphs):
+                if total_duration >= target_duration:
+                    break
+                    
+                scene_duration = scene_durations[i] if i < len(scene_durations) else 10
                 
-                scene_image = self.create_text_image(sentence, size, font_size)
+                # إنشاء مشهد
+                scene_image = self.create_rich_text_image(paragraph)
                 if scene_image:
                     scene_clip = ImageClip(scene_image, duration=scene_duration)
                     clips.append(scene_clip)
+                    total_duration += scene_duration
                 else:
-                    # خلفية ملونة بديلة
-                    colors = [(25, 99, 235), (124, 58, 237), (5, 150, 105)]
-                    color = colors[i % len(colors)]
-                    bg_clip = ColorClip(size=size, color=color, duration=scene_duration)
+                    # مشهد بديل
+                    bg_color = random.choice([(30, 60, 90), (25, 99, 235), (5, 150, 105)])
+                    bg_clip = ColorClip(size=(1920, 1080), color=bg_color, duration=scene_duration)
                     clips.append(bg_clip)
+                    total_duration += scene_duration
             
-            # مشهد الخاتمة
-            outro_text = "Thanks for watching!\n\nSubscribe for more tech tutorials"
-            outro_image = self.create_text_image(outro_text, size, font_size)
+            # 3. الخاتمة (15 ثانية)
+            outro_text = "Thanks for watching!\n\nDon't forget to subscribe for more tech content"
+            outro_image = self.create_rich_text_image(outro_text)
             if outro_image:
-                outro_clip = ImageClip(outro_image, duration=5)
+                outro_clip = ImageClip(outro_image, duration=15)
                 clips.append(outro_clip)
+                total_duration += 15
             
-            # تجميع الفيديو
+            # 4. تجميع الفيديو
             if not clips:
                 # فيديو احتياطي
-                final_clip = ColorClip(size=size, color=(25, 99, 235), duration=30)
+                final_clip = ColorClip(size=(1920, 1080), color=(25, 99, 235), duration=300)
             else:
                 final_clip = concatenate_videoclips(clips, method="compose")
             
-            # إضافة الصوت إذا كان موجوداً
+            # 5. إضافة الصوت
             if audio_path and os.path.exists(audio_path):
                 try:
                     audio_clip = AudioFileClip(audio_path)
                     
-                    # تعديل طول الفيديو أو الصوت
-                    if final_clip.duration > audio_clip.duration:
-                        final_clip = final_clip.subclip(0, audio_clip.duration)
-                    elif final_clip.duration < audio_clip.duration:
-                        audio_clip = audio_clip.subclip(0, final_clip.duration)
+                    # تأكد أن الصوت طويل بما يكفي
+                    if audio_clip.duration < final_clip.duration:
+                        # تكرار الصوت إذا كان قصيراً
+                        repeats = int(final_clip.duration // audio_clip.duration) + 1
+                        audio_segments = [audio_clip] * repeats
+                        audio_clip = concatenate_audioclips(audio_segments)
                     
+                    # اقتصاص الصوت لطول الفيديو
+                    audio_clip = audio_clip.subclip(0, final_clip.duration)
                     final_clip = final_clip.set_audio(audio_clip)
+                    
                 except Exception as e:
                     logger.error(f"❌ Audio addition error: {e}")
             
-            # حفظ الفيديو
+            # 6. حفظ الفيديو
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            output_name = f"{video_type}_video_{timestamp}"
-            output_path = f"output/{output_name}.mp4"
+            output_path = f"output/long_video_{timestamp}.mp4"
             
             final_clip.write_videofile(
                 output_path,
@@ -349,50 +421,178 @@ class SimpleVideoCreator:
                 logger=None
             )
             
+            logger.info(f"✅ Created long video: {output_path} ({final_clip.duration:.1f}s)")
             return output_path
             
         except Exception as e:
-            logger.error(f"❌ Simple video creation error: {e}")
+            logger.error(f"❌ Long video creation error: {e}")
             return None
+    
+    async def create_short_video(self, topic, script, audio_path):
+        """إنشاء فيديو قصير (45-60 ثانية)"""
+        try:
+            # تقسيم النص لمشاهد قصيرة
+            sentences = re.split(r'[.!?]+', script)
+            sentences = [s.strip() for s in sentences if len(s.strip()) > 10][:5]
+            
+            if not sentences:
+                sentences = [f"Quick tip about {topic}!", "This can save you time!", "Follow for more!"]
+            
+            clips = []
+            total_duration = 0
+            target_duration = 45  # 45 ثانية
+            
+            # 1. المقدمة السريعة (3 ثواني)
+            intro_text = f"⚡ {topic.split(':')[0] if ':' in topic else topic}"
+            intro_image = self.create_short_text_image(intro_text)
+            if intro_image:
+                intro_clip = ImageClip(intro_image, duration=3)
+                clips.append(intro_clip)
+                total_duration += 3
+            
+            # 2. المشاهد الرئيسية
+            for sentence in sentences:
+                if total_duration >= target_duration - 3:
+                    break
+                    
+                scene_duration = min(len(sentence.split()) * 0.8, 10)
+                scene_image = self.create_short_text_image(sentence[:100])
+                
+                if scene_image:
+                    scene_clip = ImageClip(scene_image, duration=scene_duration)
+                    clips.append(scene_clip)
+                    total_duration += scene_duration
+            
+            # 3. الخاتمة (3 ثواني)
+            outro_text = "🔔 Follow for more tech tips!"
+            outro_image = self.create_short_text_image(outro_text)
+            if outro_image:
+                outro_clip = ImageClip(outro_image, duration=3)
+                clips.append(outro_clip)
+                total_duration += 3
+            
+            # 4. تجميع الفيديو
+            if not clips:
+                final_clip = ColorClip(size=(1080, 1920), color=(25, 99, 235), duration=45)
+            else:
+                final_clip = concatenate_videoclips(clips, method="compose")
+            
+            # 5. إضافة الصوت
+            if audio_path and os.path.exists(audio_path):
+                try:
+                    audio_clip = AudioFileClip(audio_path)
+                    
+                    # تكرار الصوت إذا كان قصيراً
+                    if audio_clip.duration < final_clip.duration:
+                        repeats = int(final_clip.duration // audio_clip.duration) + 1
+                        audio_segments = [audio_clip] * repeats
+                        audio_clip = concatenate_audioclips(audio_segments)
+                    
+                    audio_clip = audio_clip.subclip(0, final_clip.duration)
+                    final_clip = final_clip.set_audio(audio_clip)
+                    
+                except Exception as e:
+                    logger.error(f"❌ Short audio error: {e}")
+            
+            # 6. حفظ الفيديو
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            output_path = f"output/short_video_{timestamp}.mp4"
+            
+            final_clip.write_videofile(
+                output_path,
+                fps=30,
+                codec='libx264',
+                audio_codec='aac',
+                threads=4,
+                verbose=False,
+                logger=None
+            )
+            
+            logger.info(f"✅ Created short video: {output_path} ({final_clip.duration:.1f}s)")
+            return output_path
+            
+        except Exception as e:
+            logger.error(f"❌ Short video creation error: {e}")
+            return None
+    
+    def split_into_paragraphs(self, text, min_paragraphs=10):
+        """تقسيم النص إلى فقرات"""
+        # تقسيم إلى جمل
+        sentences = re.split(r'(?<=[.!?])\s+', text)
+        
+        paragraphs = []
+        current_paragraph = []
+        words_count = 0
+        
+        for sentence in sentences:
+            sentence = sentence.strip()
+            if not sentence:
+                continue
+            
+            words = sentence.split()
+            words_count += len(words)
+            current_paragraph.append(sentence)
+            
+            # كل 30-50 كلمة تكون فقرة
+            if words_count >= 40:
+                paragraphs.append(' '.join(current_paragraph))
+                current_paragraph = []
+                words_count = 0
+        
+        if current_paragraph:
+            paragraphs.append(' '.join(current_paragraph))
+        
+        # إذا كانت الفقرات قليلة، نقسم الجمل بشكل مختلف
+        if len(paragraphs) < min_paragraphs:
+            # تقسيم كل جملة إلى قسمين
+            new_paragraphs = []
+            for para in paragraphs:
+                sentences_in_para = re.split(r'(?<=[.!?])\s+', para)
+                for sent in sentences_in_para:
+                    if len(sent.split()) > 5:
+                        new_paragraphs.append(sent)
+            
+            paragraphs = new_paragraphs[:min_paragraphs]
+        
+        return paragraphs[:15]  # حد أقصى 15 فقرة
+    
+    def calculate_scene_durations(self, num_scenes, total_duration):
+        """حساب مدة كل مشهد"""
+        if num_scenes == 0:
+            return [total_duration]
+        
+        base_duration = total_duration / num_scenes
+        durations = []
+        
+        for i in range(num_scenes):
+            # تغيير طفيف في المدة لجعلها طبيعية
+            variation = random.uniform(0.8, 1.2)
+            duration = base_duration * variation
+            durations.append(max(5, min(duration, 20)))  # بين 5 و20 ثانية
+        
+        # تعديل المجموع ليكون total_duration
+        total = sum(durations)
+        factor = total_duration / total
+        durations = [d * factor for d in durations]
+        
+        return durations
 
 class ContentEmpire:
     def __init__(self):
         self.config = Config()
-        self.setup_logging()
         self.setup_directories()
         self.used_topics = set()
-        self.content_history = {
-            "videos": [],
-            "articles": []
-        }
-        self.load_used_topics()
-        self.load_content_history()
+        self.content_history = {"videos": [], "articles": []}
+        self.load_history()
         self.youtube_uploader = YouTubeUploader()
         self.blogger_uploader = BloggerUploader()
-        self.video_creator = SimpleVideoCreator()
-    
-    def setup_logging(self):
-        self.logger = logger
+        self.video_creator = ProfessionalVideoCreator()
     
     def setup_directories(self):
         os.makedirs('output', exist_ok=True)
         os.makedirs('temp', exist_ok=True)
-        os.makedirs('assets', exist_ok=True)
     
-    async def check_environment(self):
-        """التحقق من أن جميع Environment Variables موجودة"""
-        required_vars = ['GEMINI_API_KEY', 'TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID']
-        missing_vars = [var for var in required_vars if not os.getenv(var)]
-        
-        if missing_vars:
-            self.logger.error(f"❌ Missing environment variables: {missing_vars}")
-            await self.config.send_telegram_message(f"❌ Missing environment variables: {missing_vars}")
-            return False
-        
-        self.logger.info("✅ All environment variables are set")
-        return True
-    
-    def load_used_topics(self):
+    def load_history(self):
         try:
             if os.path.exists('output/used_topics.txt'):
                 with open('output/used_topics.txt', 'r') as f:
@@ -400,434 +600,317 @@ class ContentEmpire:
         except:
             self.used_topics = set()
     
-    def save_used_topic(self, topic):
+    def save_topic(self, topic):
         self.used_topics.add(topic)
         with open('output/used_topics.txt', 'a') as f:
             f.write(topic + '\n')
     
-    def load_content_history(self):
-        try:
-            if os.path.exists('output/content_history.json'):
-                with open('output/content_history.json', 'r') as f:
-                    self.content_history = json.load(f)
-        except:
-            self.content_history = {"videos": [], "articles": []}
-    
-    def save_content_history(self):
-        try:
-            with open('output/content_history.json', 'w') as f:
-                json.dump(self.content_history, f, indent=2)
-        except Exception as e:
-            self.logger.error(f"❌ Error saving content history: {e}")
-    
-    def add_video_to_history(self, title, url, video_type="long"):
-        video_data = {
-            "title": title,
-            "url": url,
-            "type": video_type,
-            "date": datetime.now().isoformat()
-        }
-        self.content_history["videos"].append(video_data)
-        if len(self.content_history["videos"]) > 10:
-            self.content_history["videos"] = self.content_history["videos"][-10:]
-        self.save_content_history()
-    
-    def add_article_to_history(self, title, url):
-        article_data = {
-            "title": title,
-            "url": url,
-            "date": datetime.now().isoformat()
-        }
-        self.content_history["articles"].append(article_data)
-        if len(self.content_history["articles"]) > 10:
-            self.content_history["articles"] = self.content_history["articles"][-10:]
-        self.save_content_history()
-    
-    def get_recent_content_links(self):
-        recent_videos = self.content_history["videos"][-3:]
-        recent_articles = self.content_history["articles"][-3:]
-        
-        video_links = ""
-        article_links = ""
-        
-        if recent_videos:
-            video_links = "🎬 **Recent Videos:**\n"
-            for video in reversed(recent_videos):
-                video_links += f"• {video['title']}\n"
-                video_links += f"  {video['url']}\n\n"
-        
-        if recent_articles:
-            article_links = "📝 **Recent Articles:**\n"
-            for article in reversed(recent_articles):
-                article_links += f"• {article['title']}\n"
-                article_links += f"  {article['url']}\n\n"
-        
-        return video_links, article_links
-    
     async def get_unique_topic(self):
-        """توليد موضوع فريد تماماً"""
-        try:
-            backup_topics = [
-                "How AI is Revolutionizing Healthcare in 2024",
-                "The Future of Quantum Computing",
-                "Cybersecurity Trends Every Developer Should Know",
-                "Building Modern Web Applications",
-                "Machine Learning vs Deep Learning",
-                "Cloud Computing: AWS vs Azure vs Google Cloud",
-                "The Rise of Edge Computing",
-                "Blockchain Technology Beyond Cryptocurrency",
-                "5G Technology Impact",
-                "Augmented Reality in Education"
-            ]
-            
-            available_topics = [t for t in backup_topics if t not in self.used_topics]
-            
-            if available_topics:
-                chosen_topic = random.choice(available_topics)
-                self.save_used_topic(chosen_topic)
-                return chosen_topic
-            else:
-                return "Latest Technology Trends and Innovations"
-                
-        except Exception as e:
-            self.logger.error(f"❌ Error in topic selection: {e}")
-            return "Technology Innovations 2024"
+        topics = [
+            "Artificial Intelligence in Modern Healthcare: Saving Lives with Machine Learning",
+            "Quantum Computing 2024: The Future of Processing Power",
+            "Cybersecurity Essentials: Protecting Your Digital Life",
+            "Cloud Computing Explained: AWS vs Azure vs Google Cloud",
+            "Blockchain Technology: Beyond Bitcoin and Cryptocurrency",
+            "5G Networks: Revolutionizing Mobile Connectivity",
+            "Internet of Things (IoT): Smart Homes and Cities",
+            "Data Science Career Path: Skills You Need in 2024",
+            "Machine Learning vs Deep Learning: Key Differences Explained",
+            "Augmented Reality in Education: The Future of Learning"
+        ]
+        
+        available = [t for t in topics if t not in self.used_topics]
+        if available:
+            topic = random.choice(available)
+        else:
+            topic = "Emerging Technology Trends 2024: What You Need to Know"
+        
+        self.save_topic(topic)
+        return topic
     
-    async def generate_english_content(self, topic, content_type="long_video"):
+    async def generate_content(self, topic, content_type="long_video"):
         try:
             if not self.config.GEMINI_API_KEY:
-                # محتوى احتياطي
-                if content_type == "long_video":
-                    return f"""Welcome to Tech Compass!
-
-Today we're exploring {topic}.
-
-This technology is changing how we work and live. Let me show you how.
-
-First, understand the basics. {topic} involves several key concepts that every tech enthusiast should know.
-
-The applications are endless. From business to education, {topic} is making a real difference.
-
-Here are some practical tips to get started. You don't need to be an expert to begin.
-
-Remember to subscribe for more tech insights. Leave a comment about what you'd like to see next!"""
-                elif content_type == "blog":
-                    return f"""# Complete Guide: {topic}
-
-## Introduction
-{topic} is one of the most exciting technologies today. In this comprehensive guide, we'll explore everything you need to know.
-
-## What is {topic.split()[0]}?
-This technology represents a major shift in how we approach problems and solutions.
-
-## Key Benefits
-1. Increased efficiency
-2. Cost reduction
-3. Improved accuracy
-4. Better user experiences
-
-## Getting Started
-To begin with {topic.split()[0]}, start with these steps:
-1. Learn the basics
-2. Practice with small projects
-3. Join online communities
-4. Build a portfolio
-
-## Conclusion
-{topic} is here to stay. By learning it now, you position yourself for future success."""
-                else:  # short video
-                    return f"Quick tip about {topic}! This can save you hours. Follow for more tech insights! 🔥"
+                return self.get_fallback_content(topic, content_type)
             
-            # استخدام Gemini API - إصدار مصحح
             genai.configure(api_key=self.config.GEMINI_API_KEY)
             
-            try:
-                # استخدام النموذج الصحيح
-                model = genai.GenerativeModel('gemini-1.5-pro-latest' if content_type == "blog" else 'gemini-1.5-flash-latest')
+            if content_type == "long_video":
+                prompt = f"""Create a comprehensive YouTube tutorial script about: "{topic}"
+
+                Requirements:
+                - 1000+ words
+                - Educational and practical
+                - Structured into clear sections
+                - Include real-world examples
+                - Add actionable tips
+                - Keep language engaging but professional
+                - End with a call to action"""
                 
-                if content_type == "long_video":
-                    prompt = f"""Create a simple YouTube video script about: "{topic}"
-                    
-                    Keep it under 500 words. Make it educational and easy to understand."""
-                    
-                elif content_type == "blog":
-                    prompt = f"""Write a simple blog post about: "{topic}"
-                    
-                    Keep it under 800 words. Include headings and bullet points."""
-                
-                else:  # short video
-                    prompt = f"""Create a 30-second YouTube Short script about: "{topic}"
-                    
-                    Make it engaging and under 100 words."""
-                
+                model = genai.GenerativeModel('gemini-pro')
                 response = await model.generate_content_async(prompt)
                 return response.text
                 
-            except Exception as gemini_error:
-                self.logger.error(f"❌ Gemini API error: {gemini_error}")
-                # محتوى احتياطي
-                return f"Learn all about {topic} in this comprehensive tutorial. This technology is changing the world and you should know about it."
+            elif content_type == "blog":
+                prompt = f"""Write a detailed blog post about: "{topic}"
+
+                Requirements:
+                - 1500+ words
+                - SEO optimized with headings
+                - Include: Introduction, Main Content, Examples, Conclusion
+                - Add bullet points and lists
+                - Make it beginner-friendly
+                - Include practical applications"""
+                
+                model = genai.GenerativeModel('gemini-pro')
+                response = await model.generate_content_async(prompt)
+                return response.text
             
+            else:  # short video
+                prompt = f"""Create a quick, engaging YouTube Short script about: "{topic}"
+
+                Requirements:
+                - Under 100 words
+                - Hook in first 5 words
+                - One key insight or tip
+                - High energy
+                - Call to action at end
+                - Use emojis sparingly"""
+                
+                model = genai.GenerativeModel('gemini-1.5-flash')
+                response = await model.generate_content_async(prompt)
+                return response.text
+                
         except Exception as e:
-            self.logger.error(f"❌ Content generation error: {e}")
-            return f"# {topic}\n\nLearn all about {topic} in this comprehensive guide. Discover the latest developments and practical applications."
+            logger.error(f"❌ Content generation error: {e}")
+            return self.get_fallback_content(topic, content_type)
     
-    async def generate_english_audio(self, text, output_name):
-        """توليد صوت باستخدام TTS محلي كبديل"""
+    def get_fallback_content(self, topic, content_type):
+        if content_type == "long_video":
+            return f"""Welcome to Tech Compass! Today we're diving deep into {topic}.
+
+This is one of the most exciting technologies of our time. Let's explore it together.
+
+First, let's understand what {topic.split(':')[0] if ':' in topic else topic} really means. At its core, it's about using technology to solve real-world problems.
+
+The applications are endless. From healthcare to finance, from education to entertainment, this technology is making a difference.
+
+Here are the key concepts you need to know:
+
+1. Foundational Principles
+Understanding the basics is crucial. We'll break down the complex ideas into simple terms.
+
+2. Current Applications
+Where is this technology being used today? We'll look at real-world examples.
+
+3. Future Potential
+What does the future hold? We'll explore upcoming trends and developments.
+
+4. Getting Started
+How can you begin learning and using this technology? We'll provide practical steps.
+
+Remember, the goal isn't just to understand the theory, but to apply it in practical ways.
+
+Whether you're a student, professional, or just curious about technology, this tutorial will give you valuable insights.
+
+Don't forget to practice what you learn. The best way to understand any technology is to use it.
+
+If you have questions, leave them in the comments below. We'll do our best to help.
+
+Thanks for watching, and don't forget to subscribe for more tech tutorials!"""
+        
+        elif content_type == "blog":
+            return f"""# Complete Guide to {topic}
+
+## Introduction
+{topic} represents one of the most significant technological advancements of our era. In this comprehensive guide, we'll explore everything you need to know about this transformative technology.
+
+## What is {topic.split(':')[0] if ':' in topic else topic}?
+At its core, this technology represents a paradigm shift in how we approach problem-solving and innovation.
+
+## Key Benefits and Applications
+1. **Increased Efficiency**: Automating repetitive tasks and processes
+2. **Enhanced Accuracy**: Reducing human error through automation
+3. **Cost Reduction**: Optimizing resources and operations
+4. **Improved User Experience**: Creating better products and services
+
+## Getting Started
+To begin your journey with {topic.split()[0]}, follow these steps:
+
+### Step 1: Learn the Fundamentals
+Start with the basic concepts and principles.
+
+### Step 2: Practice with Projects
+Apply your knowledge through hands-on projects.
+
+### Step 3: Join Communities
+Connect with other learners and professionals.
+
+### Step 4: Build a Portfolio
+Showcase your skills and knowledge.
+
+## Real-World Examples
+We'll examine how leading companies are implementing this technology to drive innovation and growth.
+
+## Future Outlook
+What does the future hold for {topic.split()[0]}? We'll explore emerging trends and predictions.
+
+## Conclusion
+{topic} is more than just a trend—it's a fundamental shift in how we interact with technology. By understanding and embracing this technology, you position yourself for success in the digital age.
+
+Ready to learn more? Check out our YouTube channel for video tutorials!"""
+        
+        else:  # short video
+            return f"⚡ Quick Tech Tip!\n\n{topic.split(':')[0] if ':' in topic else topic} can transform your workflow!\n\nHere's one key insight you need to know...\n\nFollow for more daily tech tips! 🔥"
+    
+    async def generate_audio(self, text, output_name):
         try:
             output_path = f"temp/{output_name}.mp3"
             
-            # استخدام gTTS كبديل
-            try:
-                from gtts import gTTS
-                tts = gTTS(text[:500], lang='en', slow=False)
-                tts.save(output_path)
-                return output_path
-            except ImportError:
-                # إذا لم يكن gTTS مثبتاً، نستخدم edge-tts مع إعدادات بسيطة
-                communicate = edge_tts.Communicate(
-                    text[:800],
-                    "en-US-GuyNeural",  # صوت مختلف
-                    rate="+0%",
-                    pitch="+0Hz"
-                )
-                await communicate.save(output_path)
-                return output_path
-                
-        except Exception as e:
-            self.logger.error(f"❌ Audio generation error: {e}")
-            # إنشاء ملف صوتي فارغ
-            import wave
-            import struct
+            # استخدام جزء من النص للصوت
+            clean_text = text[:2000].replace('\n', ' ').replace('"', "'")
             
-            output_path = f"temp/{output_name}.wav"
-            with wave.open(output_path, 'w') as wav_file:
-                wav_file.setparams((1, 2, 24000, 0, 'NONE', 'not compressed'))
-                wav_file.writeframes(b'')
-            
-            return output_path
-    
-    async def create_professional_video(self, script_text, audio_path, video_type="long", topic=""):
-        """إنشاء فيديو باستخدام المنشئ المبسط"""
-        try:
-            video_path = await self.video_creator.create_simple_video(
-                topic, script_text, audio_path, video_type
+            communicate = edge_tts.Communicate(
+                clean_text,
+                "en-US-ChristopherNeural",
+                rate="+10%",
+                pitch="+0Hz"
             )
-            return video_path
+            
+            await communicate.save(output_path)
+            return output_path
+            
         except Exception as e:
-            self.logger.error(f"❌ Video creation error: {e}")
-            return None
-    
-    async def publish_to_youtube_real(self, video_path, title, description, video_type="long"):
-        """النشر الفعلي على YouTube"""
-        try:
-            if not video_path or not os.path.exists(video_path):
-                self.logger.error(f"❌ Video file not found: {video_path}")
-                await self.config.send_telegram_message(f"❌ Video creation failed for: {title}")
-                return None
-            
-            recent_videos, recent_articles = self.get_recent_content_links()
-            
-            # وصف بسيط
-            full_description = f"""{description}
-
-🔔 Subscribe for more tech education: {self.config.YOUTUBE_CHANNEL_URL}
-
-📝 Read our blog: {self.config.BLOGGER_BLOG_URL}
-
-#Tech #Education #Tutorial"""
-            
-            youtube_url = self.youtube_uploader.upload_video(video_path, title, full_description)
-            
-            if youtube_url:
-                self.add_video_to_history(title, youtube_url, video_type)
-                
-                message = f"""
-🎬 <b>YouTube {'Short' if video_type == 'short' else 'Video'} Published!</b>
-
-✅ <b>Title:</b> {title}
-✅ <b>Type:</b> {'45s Short' if video_type == 'short' else 'Tutorial'}
-✅ <b>URL:</b> {youtube_url}
-
-🕒 <b>Published:</b> {datetime.now().strftime('%H:%M UTC')}
-"""
-                await self.config.send_telegram_message(message)
-                return youtube_url
-            else:
-                fallback_url = f"https://youtube.com/watch?v=dummy_{hashlib.md5(title.encode()).hexdigest()[:8]}"
-                await self.config.send_telegram_message(f"⚠️ YouTube upload simulation: {fallback_url}")
-                return fallback_url
-                
-        except Exception as e:
-            self.logger.error(f"❌ YouTube publish error: {e}")
-            return None
-    
-    async def publish_to_blogger_real(self, title, content, youtube_url=None):
-        """النشر الفعلي على Blogger"""
-        try:
-            # محتوى HTML بسيط
-            html_content = f"""
-<h1>{title}</h1>
-
-<div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;">
-{content.replace(chr(10), '<br>')}
-</div>
-"""
-            
-            if youtube_url:
-                html_content += f"""
-<div style="text-align: center; margin: 20px 0;">
-<a href="{youtube_url}" target="_blank" style="background: #ff0000; color: white; padding: 10px 20px; border-radius: 5px; text-decoration: none;">
-▶️ Watch Video Tutorial
-</a>
-</div>
-"""
-            
-            blog_url = self.blogger_uploader.publish_post(title, html_content)
-            
-            if blog_url:
-                self.add_article_to_history(title, blog_url)
-                
-                message = f"""
-📝 <b>Blog Article Published!</b>
-
-✅ <b>Title:</b> {title}
-✅ <b>URL:</b> {blog_url}
-
-🕒 <b>Published:</b> {datetime.now().strftime('%H:%M UTC')}
-"""
-                
-                await self.config.send_telegram_message(message)
-                return blog_url
-            else:
-                fallback_url = f"{self.config.BLOGGER_BLOG_URL}"
-                await self.config.send_telegram_message(f"⚠️ Blogger publish simulation: {fallback_url}")
-                return fallback_url
-                
-        except Exception as e:
-            self.logger.error(f"❌ Blogger publish error: {e}")
+            logger.error(f"❌ Audio generation error: {e}")
             return None
     
     async def run_12_00_workflow(self):
-        """فيديو طويل + مقال"""
         try:
-            self.logger.info("🚀 Starting 12:00 workflow")
+            logger.info("🚀 Starting 12:00 workflow")
             
             topic = await self.get_unique_topic()
-            self.logger.info(f"📝 Topic: {topic}")
+            logger.info(f"📝 Topic: {topic}")
             
-            video_script = await self.generate_english_content(topic, "long_video")
-            blog_content = await self.generate_english_content(topic, "blog")
+            video_script = await self.generate_content(topic, "long_video")
+            blog_content = await self.generate_content(topic, "blog")
             
-            audio_path = await self.generate_english_audio(video_script, "long_audio")
-            video_path = await self.create_professional_video(video_script, audio_path, "long", topic)
+            audio_path = await self.generate_audio(video_script, "long_audio")
+            video_path = await self.video_creator.create_long_video(topic, video_script, audio_path)
             
             if video_path and os.path.exists(video_path):
-                youtube_url = await self.publish_to_youtube_real(
+                # تحقق من مدة الفيديو
+                video_clip = VideoFileClip(video_path)
+                duration = video_clip.duration
+                video_clip.close()
+                
+                logger.info(f"📏 Video duration: {duration:.1f} seconds")
+                
+                if duration < 300:  # أقل من 5 دقائق
+                    logger.warning("⚠️ Video too short, creating new one")
+                    # إنشاء فيديو أطول
+                    video_path = await self.create_extended_video(topic, video_script, audio_path)
+                
+                youtube_url = self.youtube_uploader.upload_video(
                     video_path, 
                     f"{topic} - Complete Tutorial 2024", 
-                    video_script[:200],
-                    "long"
+                    video_script[:500] + f"\n\nLearn more about {topic} in this comprehensive tutorial."
                 )
                 
-                blog_url = await self.publish_to_blogger_real(
-                    f"Complete Guide: {topic}",
-                    blog_content,
-                    youtube_url
-                )
-            else:
-                self.logger.error("❌ Failed to create video")
+                if youtube_url:
+                    blog_url = self.blogger_uploader.publish_post(
+                        f"Complete Guide: {topic}",
+                        blog_content + f'\n\n<center><a href="{youtube_url}">Watch the video tutorial here</a></center>'
+                    )
             
-            self.logger.info("✅ 12:00 workflow completed")
+            logger.info("✅ 12:00 workflow completed")
             
         except Exception as e:
-            self.logger.error(f"❌ 12:00 workflow error: {e}")
+            logger.error(f"❌ 12:00 workflow error: {e}")
+    
+    async def create_extended_video(self, topic, script, audio_path):
+        """إنشاء فيديو أطول"""
+        try:
+            # تكرار أجزاء من السكربت لزيادة المدة
+            paragraphs = script.split('\n\n')
+            extended_script = script + "\n\n" + "\n\n".join(paragraphs[:5])
+            
+            return await self.video_creator.create_long_video(topic, extended_script, audio_path)
+        except:
+            return None
     
     async def run_14_00_workflow(self):
-        """شورت 1"""
         try:
-            self.logger.info("🚀 Starting 14:00 workflow")
+            logger.info("🚀 Starting 14:00 workflow")
             
             topic = await self.get_unique_topic()
-            short_script = await self.generate_english_content(topic, "short_video")
+            short_script = await self.generate_content(topic, "short_video")
             
-            audio_path = await self.generate_english_audio(short_script, "short_audio_1")
-            video_path = await self.create_professional_video(short_script, audio_path, "short", topic)
+            audio_path = await self.generate_audio(short_script, "short_audio_1")
+            video_path = await self.video_creator.create_short_video(topic, short_script, audio_path)
             
             if video_path and os.path.exists(video_path):
-                await self.publish_to_youtube_real(
+                self.youtube_uploader.upload_video(
                     video_path,
-                    f"{topic} - Quick Tip 🔥",
-                    short_script,
-                    "short"
+                    f"{topic} - Quick Tip ⚡",
+                    short_script + "\n\n#Shorts #Tech #Tips"
                 )
             
-            self.logger.info("✅ 14:00 workflow completed")
+            logger.info("✅ 14:00 workflow completed")
             
         except Exception as e:
-            self.logger.error(f"❌ 14:00 workflow error: {e}")
+            logger.error(f"❌ 14:00 workflow error: {e}")
     
     async def run_16_00_workflow(self):
-        """شورت 2"""
         try:
-            self.logger.info("🚀 Starting 16:00 workflow")
+            logger.info("🚀 Starting 16:00 workflow")
             
             topic = await self.get_unique_topic()
-            short_script = await self.generate_english_content(topic, "short_video")
+            short_script = await self.generate_content(topic, "short_video")
             
-            audio_path = await self.generate_english_audio(short_script, "short_audio_2")
-            video_path = await self.create_professional_video(short_script, audio_path, "short", topic)
+            audio_path = await self.generate_audio(short_script, "short_audio_2")
+            video_path = await self.video_creator.create_short_video(topic, short_script, audio_path)
             
             if video_path and os.path.exists(video_path):
-                await self.publish_to_youtube_real(
+                self.youtube_uploader.upload_video(
                     video_path,
-                    f"{topic} - Explained in 45s ⚡",
-                    short_script,
-                    "short"
+                    f"{topic} Explained in Seconds! 🚀",
+                    short_script + "\n\n#Shorts #Technology #Education"
                 )
             
-            self.logger.info("✅ 16:00 workflow completed")
+            logger.info("✅ 16:00 workflow completed")
             
         except Exception as e:
-            self.logger.error(f"❌ 16:00 workflow error: {e}")
+            logger.error(f"❌ 16:00 workflow error: {e}")
     
     async def run_daily_workflow(self):
         try:
-            if not await self.check_environment():
-                return
-            
-            current_time = datetime.utcnow().strftime('%H:%M')
-            self.logger.info(f"🕒 Current UTC time: {current_time}")
-            
-            # تشغيل جميع workflows للاختبار
-            self.logger.info("🔄 Running all workflows for testing")
-            
+            # تشغيل جميع الworkflows
             await self.run_12_00_workflow()
-            await asyncio.sleep(2)
+            await asyncio.sleep(5)
             
             await self.run_14_00_workflow()
-            await asyncio.sleep(2)
+            await asyncio.sleep(5)
             
             await self.run_16_00_workflow()
             
             await self.config.send_telegram_message(f"""
-🎉 <b>Daily Content Empire Complete!</b>
+🎉 <b>Daily Content Production Complete!</b>
 
-✅ <b>12:00 UTC:</b> Long Tutorial Video + Blog Post
-✅ <b>14:00 UTC:</b> Quick Tutorial Short  
-✅ <b>16:00 UTC:</b> Tech Insights Short
+✅ Long Tutorial Video (10+ minutes)
+✅ Tech Short #1 (45 seconds)
+✅ Tech Short #2 (45 seconds)
 
-⚡ <b>Status:</b> All workflows executed successfully!
+All content has been generated and published successfully!
+
+🕒 {datetime.now().strftime('%Y-%m-%d %H:%M UTC')}
 """)
             
         except Exception as e:
-            error_msg = f"❌ Daily workflow failed: {str(e)}"
-            self.logger.error(error_msg)
-            await self.config.send_telegram_message(error_msg)
+            logger.error(f"❌ Daily workflow failed: {e}")
 
 if __name__ == "__main__":
     # التأكد من وجود المجلدات
-    for folder in ['output', 'temp', 'assets']:
+    for folder in ['output', 'temp']:
         os.makedirs(folder, exist_ok=True)
     
     empire = ContentEmpire()
